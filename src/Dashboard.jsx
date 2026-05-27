@@ -75,6 +75,7 @@ export default function Dashboard({ user, onLogout }) {
   const [pairPlaylist,   setPairPlaylist]   = useState("");
   const [pairScreenName, setPairScreenName] = useState("");
   const [tvCode,         setTvCode]         = useState(() => makeCode());
+  const [allBranches,    setAllBranches]    = useState([]);
 
   // Modals
   const [showTVPreview,   setShowTVPreview]   = useState(false);
@@ -359,7 +360,13 @@ export default function Dashboard({ user, onLogout }) {
                   </div>
                 </div>
                 <div style={{ display:"flex",gap:10 }}>
-                  <button onClick={()=>{setShowPairModal(true);setPairStep("input");setPairCode("");}} style={BP}>⊕ Adicionar TV</button>
+                  <button onClick={async()=>{
+                    setShowPairModal(true);setPairStep("input");setPairCode("");
+                    try {
+                      const bs = await api.getBranches();
+                      setAllBranches(bs);
+                    } catch { setAllBranches([]); }
+                  }} style={BP}>⊕ Adicionar TV</button>
                   <button onClick={()=>setShowNewClient(true)} style={BS}>+ Novo cliente</button>
                 </div>
               </div>
@@ -703,8 +710,10 @@ export default function Dashboard({ user, onLogout }) {
                 <div><Label>NOME DA TELA</Label><input value={pairScreenName} onChange={e=>setPairScreenName(e.target.value)} placeholder="Ex: Vitrine Principal" style={IN} /></div>
                 <div><Label>FILIAL</Label>
                   <select value={pairBranch} onChange={e=>setPairBranch(e.target.value)} style={IN}>
-                    <option value="">— Selecione —</option>
-                    {clients.map(c=><optgroup key={c.id} label={c.name}>{(c.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</optgroup>)}
+                    <option value="">— Selecione a filial —</option>
+                    {allBranches.map(b=>(
+                      <option key={b.id} value={b.id}>{b.name} {b.city ? `· ${b.city}` : ""}</option>
+                    ))}
                   </select>
                 </div>
                 <div><Label>PLAYLIST INICIAL</Label>
