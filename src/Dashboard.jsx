@@ -987,8 +987,21 @@ function ClientBranches({ clientId, playlists, expandedBranches, toggleBranch, s
                     ))}
                   </div>
                   <div style={{ display:"flex",gap:8 }}>
-                    <select onChange={async e=>{ if(!e.target.value)return; try{await api.assignPlaylist(selectedScreen.id,e.target.value);await loadAll();notify("Playlist atribuída!");}catch{notify("Erro.","error");}}} defaultValue="" style={{ ...IN,flex:2 }}>
-                      <option value="">Atribuir playlist…</option>
+                    <select
+                      value={selectedScreen.current_playlist_id || ""}
+                      onChange={async e=>{
+                        if(!e.target.value) return;
+                        try {
+                          await api.assignPlaylist(selectedScreen.id, e.target.value);
+                          // Atualiza selectedScreen localmente
+                          const pl = playlists.find(p=>p.id===e.target.value);
+                          setSelectedScreen(s=>({...s, current_playlist_id:e.target.value, playlist_name:pl?.name||""}));
+                          await loadAll();
+                          notify("Playlist atribuída!");
+                        } catch { notify("Erro.","error"); }
+                      }}
+                      style={{ ...IN,flex:2 }}>
+                      <option value="">— Selecionar playlist —</option>
                       {playlists.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                     <button onClick={async()=>{try{await api.restartScreen(selectedScreen.id);notify("Reiniciando…");}catch{notify("Erro.","error");}}} style={{ ...BS,flex:1 }}>Reiniciar</button>
