@@ -979,7 +979,10 @@ function ClientBranches({ clientId, playlists, expandedBranches, toggleBranch, s
                     <button onClick={()=>setSelectedScreen(null)} style={{ background:"transparent",border:"none",color:"var(--muted)",cursor:"pointer" }}>✕</button>
                   </div>
                   <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12 }}>
-                    {[["Código",selectedScreen.pair_code||"—"],["Localização",selectedScreen.location||"—"],["Status",selectedScreen.status],["Playlist",selectedScreen.playlist_name||"—"]].map(([k,v])=>(
+                    {(()=>{
+                      const plName = selectedScreen.playlist_name || playlists.find(p=>p.id===selectedScreen.current_playlist_id)?.name || "—";
+                      return [["Código",selectedScreen.pair_code||"—"],["Localização",selectedScreen.location||"—"],["Status",selectedScreen.status],["Playlist",plName]];
+                    })().map(([k,v])=>(
                       <div key={k} style={{ background:"var(--bg)",borderRadius:8,padding:10 }}>
                         <div style={{ fontSize:10,fontFamily:"var(--font-mono)",color:"var(--muted)",marginBottom:3 }}>{k}</div>
                         <div style={{ fontSize:12,fontWeight:600 }}>{v}</div>
