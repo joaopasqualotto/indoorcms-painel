@@ -95,6 +95,12 @@ export default function Dashboard({ user, onLogout }) {
   const [uploadFile,      setUploadFile]      = useState(null);
   const [uploadProgress,  setUploadProgress]  = useState(0);
 
+  // Playlist editor
+  const [editingPlaylist,    setEditingPlaylist]    = useState(null);
+  const [showPlaylistEditor, setShowPlaylistEditor] = useState(false);
+  const [showAddMediaUrl,    setShowAddMediaUrl]    = useState(false);
+  const [newUrlMedia,        setNewUrlMedia]        = useState({ name:"", url:"", type:"url", duration_sec:10 });
+
   // ── Load data ───────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -397,7 +403,7 @@ export default function Dashboard({ user, onLogout }) {
           )}
 
           {/* ══ PLAYLISTS ══════════════════════════════════════════════════════ */}
-          {tab==="playlists" && (
+          {tab==="playlists" && !showPlaylistEditor && (
             <div>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24 }}>
                 <h1 style={{ fontSize:22,fontWeight:800 }}>Playlists</h1>
@@ -415,6 +421,13 @@ export default function Dashboard({ user, onLogout }) {
                     </div>
                     <Chip label={p.active?"● ativa":"pausada"} color={p.active?"var(--green)":"var(--muted)"} />
                     <div style={{ display:"flex",gap:8 }}>
+                      <button onClick={async()=>{
+                        try {
+                          const full = await api.getPlaylist(p.id);
+                          setEditingPlaylist(full);
+                          setShowPlaylistEditor(true);
+                        } catch { notify("Erro ao abrir playlist.","error"); }
+                      }} style={BX}>✏ Editar</button>
                       <button onClick={async()=>{ try{ await api.updatePlaylist(p.id,{...p,active:!p.active}); await loadAll(); notify("Atualizado!"); }catch{notify("Erro.","error");} }} style={BX}>{p.active?"Pausar":"Ativar"}</button>
                       <button onClick={async()=>{ try{ await api.deletePlaylist(p.id); await loadAll(); notify("Removida!"); }catch{notify("Erro.","error");} }} style={{ ...BX,color:"var(--red)",borderColor:"rgba(239,68,68,.3)" }}>✕</button>
                     </div>
@@ -432,6 +445,98 @@ export default function Dashboard({ user, onLogout }) {
                     <option value="manual">Manual</option>
                   </select>
                   <button onClick={handleCreatePlaylist} style={{ ...BP,width:"100%",marginTop:8 }}>Criar playlist</button>
+                </Modal>
+              )}
+            </div>
+          )}
+
+          {/* ══ EDITOR DE PLAYLIST ══════════════════════════════════════════════ */}
+          {tab==="playlists" && showPlaylistEditor && editingPlaylist && (
+            <div>
+              <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:24 }}>
+                <button onClick={()=>{ setShowPlaylistEditor(false); setEditingPlaylist(null); loadAll(); }} style={{ ...BX,display:"flex",alignItems:"center",gap:6 }}>← Voltar</button>
+                <div>
+                  <h1 style={{ fontSize:22,fontWeight:800 }}>{editingPlaylist.name}</h1>
+                  <div style={{ fontSize:12,fontFamily:"var(--font-mono)",color:"var(--muted)",marginTop:2 }}>
+                    {(editingPlaylist.items||[]).length} itens · clique em "+ Adicionar mídia" para incluir conteúdo
+                  </div>
+                </div>
+              </div>
+
+              {/* Itens da playlist */}
+              <div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:20 }}>
+                {(editingPlaylist.items||[]).length === 0 && (
+                  <div style={{ background:"var(--surface2)",border:"2px dashed var(--border)",borderRadius:12,padding:"40px",textAlign:"center",color:"var(--muted)",fontSize:14 }}>
+                    <div style={{ fontSize:32,marginBottom:8 }}>🎬</div>
+                    Playlist vazia — adicione vídeos, imagens ou URLs abaixo
+                  </div>
+                )}
+                {(editingPlaylist.items||[]).map((item, idx) => (
+                  <div key={item.id} style={{ background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:"14px 16px",display:"flex",alignItems:"center",gap:14 }}>
+                    <div style={{ width:32,height:32,borderRadius:6,background:`${typeColor[item.media_type]||"#888"}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:typeColor[item.media_type]||"#888",flexShrink:0 }}>
+                      {typeIcon[item.media_type]||"◼"}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13,fontWeight:700 }}>{item.media_name}</div>
+                      <div style={{ fontSize:11,fontFamily:"var(--font-mono)",color:"var(--muted)",marginTop:2 }}>
+                        {item.media_type} · {item.duration_sec}s exibição
+                      </div>
+                    </div>
+                    <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                      <span style={{ fontSize:11,fontFamily:"var(--font-mono)",color:"var(--muted)" }}>#{idx+1}</span>
+                      <button onClick={async()=>{
+                        try {
+                          await api.deletePlaylist(editingPlaylist.id + "/items/" + item.id);
+                        } catch {}
+                        // Remove localmente
+                        setEditingPlaylist(p=>({...p, items: p.items.filter(i=>i.id!==item.id)}));
+                        notify("Item removido!");
+                      }} style={{ ...BX,color:"var(--red)",borderColor:"rgba(239,68,68,.3)" }}>✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botões de ação */}
+              <div style={{ display:"flex",gap:10 }}>
+                <button onClick={()=>setShowAddMediaUrl(true)} style={BP}>+ Adicionar mídia por URL</button>
+                <button onClick={()=>setTab("media")} style={BS}>Ir para biblioteca de mídias</button>
+              </div>
+
+              {/* Modal adicionar URL */}
+              {showAddMediaUrl && (
+                <Modal title="Adicionar mídia por URL" onClose={()=>setShowAddMediaUrl(false)}>
+                  <div style={{ background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:8,padding:"12px 14px",fontSize:12,color:"var(--muted)",marginBottom:4,lineHeight:1.6 }}>
+                    💡 Cole um link direto para um vídeo MP4, imagem, ou página web. Ex: link do Google Drive, Dropbox, ou qualquer URL pública.
+                  </div>
+                  <Label>NOME DA MÍDIA</Label>
+                  <input value={newUrlMedia.name} onChange={e=>setNewUrlMedia(p=>({...p,name:e.target.value}))} placeholder="Ex: Vídeo Institucional" style={IN} />
+                  <Label>URL</Label>
+                  <input value={newUrlMedia.url} onChange={e=>setNewUrlMedia(p=>({...p,url:e.target.value}))} placeholder="https://..." style={IN} />
+                  <Label>TIPO</Label>
+                  <select value={newUrlMedia.type} onChange={e=>setNewUrlMedia(p=>({...p,type:e.target.value}))} style={IN}>
+                    <option value="video">Vídeo (MP4)</option>
+                    <option value="image">Imagem</option>
+                    <option value="url">URL / Página web</option>
+                    <option value="html">HTML</option>
+                  </select>
+                  <Label>TEMPO DE EXIBIÇÃO (segundos)</Label>
+                  <input type="number" value={newUrlMedia.duration_sec} onChange={e=>setNewUrlMedia(p=>({...p,duration_sec:parseInt(e.target.value)||10}))} style={IN} min={1} />
+                  <button onClick={async()=>{
+                    if (!newUrlMedia.name||!newUrlMedia.url) { notify("Preencha nome e URL.","error"); return; }
+                    try {
+                      // Cadastra na biblioteca
+                      const mediaItem = await api.addMediaUrl({ name:newUrlMedia.name, url:newUrlMedia.url, type:newUrlMedia.type, duration_sec:newUrlMedia.duration_sec });
+                      // Adiciona à playlist
+                      await api.addMediaToPlaylist(editingPlaylist.id, { media_id:mediaItem.id, duration_sec:newUrlMedia.duration_sec });
+                      // Atualiza editor
+                      const updated = await api.getPlaylist(editingPlaylist.id);
+                      setEditingPlaylist(updated);
+                      setShowAddMediaUrl(false);
+                      setNewUrlMedia({ name:"", url:"", type:"url", duration_sec:10 });
+                      notify("Mídia adicionada!");
+                    } catch(err) { notify(err.response?.data?.error||"Erro ao adicionar.","error"); }
+                  }} style={{ ...BP,width:"100%",marginTop:8 }}>Adicionar à playlist</button>
                 </Modal>
               )}
             </div>

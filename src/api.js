@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE = "https://indoorcms-api-production.up.railway.app";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const api = axios.create({ baseURL: BASE });
 
@@ -145,3 +145,10 @@ export const saveSettings = (data) =>
   api.put("/api/settings", data).then((r) => r.data);
 
 export default api;
+
+// ── Playlist items ────────────────────────────────────────────────────────────
+export const addMediaToPlaylist = (playlistId, data) =>
+  api.post(`/api/playlists/${playlistId}/items`, data).then((r) => r.data);
+
+export const removePlaylistItem = (playlistId, itemId) =>
+  api.delete(`/api/playlists/${playlistId}/items/${itemId}`).then((r) => r.data);
