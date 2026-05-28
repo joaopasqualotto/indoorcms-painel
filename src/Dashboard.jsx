@@ -499,15 +499,56 @@ export default function Dashboard({ user, onLogout }) {
 
               {/* Botões de ação */}
               <div style={{ display:"flex",gap:10 }}>
-                <button onClick={()=>setShowAddMediaUrl(true)} style={BP}>+ Adicionar mídia por URL</button>
-                <button onClick={()=>setTab("media")} style={BS}>Ir para biblioteca de mídias</button>
+                <button onClick={()=>setShowAddMediaUrl(true)} style={BP}>+ Da biblioteca</button>
+                <button onClick={()=>setShowAddMediaUrl("url")} style={BS}>+ Por URL</button>
               </div>
 
-              {/* Modal adicionar URL */}
-              {showAddMediaUrl && (
+              {/* Modal — escolher da biblioteca */}
+              {showAddMediaUrl === true && (
+                <Modal title="Adicionar da biblioteca" onClose={()=>setShowAddMediaUrl(false)}>
+                  {media.length === 0 ? (
+                    <div style={{ textAlign:"center",padding:"20px 0",color:"var(--muted)",fontSize:13 }}>
+                      Nenhuma mídia na biblioteca ainda.<br/>
+                      <span style={{ fontSize:12 }}>Use "Por URL" para adicionar conteúdo.</span>
+                    </div>
+                  ) : (
+                    <div style={{ display:"flex",flexDirection:"column",gap:8,maxHeight:360,overflowY:"auto" }}>
+                      {media.map(m=>{
+                        const alreadyAdded = (editingPlaylist.items||[]).some(i=>i.media_id===m.id);
+                        return (
+                          <div key={m.id} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"var(--bg)",borderRadius:8,border:`1px solid ${alreadyAdded?"var(--accent)":"var(--border)"}` }}>
+                            <div style={{ width:32,height:32,borderRadius:6,background:`${typeColor[m.type]||"#888"}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:typeColor[m.type]||"#888",flexShrink:0 }}>
+                              {typeIcon[m.type]||"◼"}
+                            </div>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontSize:13,fontWeight:600 }}>{m.name}</div>
+                              <div style={{ fontSize:11,fontFamily:"var(--font-mono)",color:"var(--muted)" }}>{m.type}</div>
+                            </div>
+                            {alreadyAdded ? (
+                              <span style={{ fontSize:11,fontFamily:"var(--font-mono)",color:"var(--accent)" }}>✓ adicionada</span>
+                            ) : (
+                              <button onClick={async()=>{
+                                try {
+                                  await api.addMediaToPlaylist(editingPlaylist.id, { media_id:m.id, duration_sec:10 });
+                                  const updated = await api.getPlaylist(editingPlaylist.id);
+                                  setEditingPlaylist(updated);
+                                  notify(`"${m.name}" adicionada!`);
+                                } catch(err) { notify(err.response?.data?.error||"Erro.","error"); }
+                              }} style={BP}>+ Adicionar</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Modal>
+              )}
+
+              {/* Modal — adicionar por URL */}
+              {showAddMediaUrl === "url" && (
                 <Modal title="Adicionar mídia por URL" onClose={()=>setShowAddMediaUrl(false)}>
                   <div style={{ background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:8,padding:"12px 14px",fontSize:12,color:"var(--muted)",marginBottom:4,lineHeight:1.6 }}>
-                    💡 Cole um link direto para um vídeo MP4, imagem, ou página web. Ex: link do Google Drive, Dropbox, ou qualquer URL pública.
+                    💡 Cole um link direto para um vídeo MP4, imagem, ou página web.
                   </div>
                   <Label>NOME DA MÍDIA</Label>
                   <input value={newUrlMedia.name} onChange={e=>setNewUrlMedia(p=>({...p,name:e.target.value}))} placeholder="Ex: Vídeo Institucional" style={IN} />
@@ -525,11 +566,8 @@ export default function Dashboard({ user, onLogout }) {
                   <button onClick={async()=>{
                     if (!newUrlMedia.name||!newUrlMedia.url) { notify("Preencha nome e URL.","error"); return; }
                     try {
-                      // Cadastra na biblioteca
                       const mediaItem = await api.addMediaUrl({ name:newUrlMedia.name, url:newUrlMedia.url, type:newUrlMedia.type, duration_sec:newUrlMedia.duration_sec });
-                      // Adiciona à playlist
                       await api.addMediaToPlaylist(editingPlaylist.id, { media_id:mediaItem.id, duration_sec:newUrlMedia.duration_sec });
-                      // Atualiza editor
                       const updated = await api.getPlaylist(editingPlaylist.id);
                       setEditingPlaylist(updated);
                       setShowAddMediaUrl(false);
