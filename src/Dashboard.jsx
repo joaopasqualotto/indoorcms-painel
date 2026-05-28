@@ -1007,7 +1007,12 @@ function ClientBranches({ clientId, playlists, expandedBranches, toggleBranch, s
                       <option value="">— Selecionar playlist —</option>
                       {playlists.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
-                    <button onClick={async()=>{try{await api.restartScreen(selectedScreen.id);notify("Reiniciando…");}catch{notify("Erro.","error");}}} style={{ ...BS,flex:1 }}>Reiniciar</button>
+                    <button onClick={async()=>{try{await api.restartScreen(selectedScreen.id);notify("Reiniciando…");}catch{notify("Erro.","error");}}} style={BS}>Reiniciar</button>
+                    <button onClick={async()=>{
+                      if(!window.confirm("Remover esta tela?")) return;
+                      try{ await api.deleteScreen(selectedScreen.id); setSelectedScreen(null); await loadAll(); notify("Tela removida!"); }
+                      catch{ notify("Erro ao remover.","error"); }
+                    }} style={{ background:"transparent",color:"var(--red)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,padding:"9px 14px",fontSize:13,fontWeight:600,fontFamily:"var(--font-display)",cursor:"pointer" }}>🗑 Remover</button>
                   </div>
                 </div>
               )}
